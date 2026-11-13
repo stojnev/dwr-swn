@@ -49,11 +49,10 @@ sudo ./uninstall.sh
 
 The uninstaller removes player-specific scripts, units, udev rules, artwork and sudoers rule. It deliberately retains MPD, `/etc/mpd.conf`, `/etc/fstab`, installed packages and backups to avoid destroying unrelated configuration.
 
-## Important draft notes
+## Important notes
 
-1. This is a first reproducibility draft based on the supplied live-system snapshot. Test it on a spare/fresh SD card before using it as the only recovery path.
-2. The installer preserves the supplied MPD configuration while setting ALSA `default`.
-3. `cdplay` is started by the supplied udev rule as a transient systemd unit named `cdplay`; there is intentionally no permanent `cdplay.service`.
-4. The project expects the optical drive at `/dev/sr0`. The Apple SuperDrive initialization rule is specific to USB vendor/product `05ac:1500`.
-5. The web UI is an unauthenticated HTTP interface bound to all network interfaces on port 80. Use it only on a trusted local network.
-6. The original MPD configuration includes `include_optional "mpd_local.conf"`; this installer does not create or overwrite that optional file.
+1. The installer preserves the supplied MPD configuration while setting ALSA `default`.
+2. `cdplay` is started by the supplied udev rule as a transient systemd unit named `cdplay`; there is intentionally no permanent `cdplay.service`.
+3. The project expects the optical drive at `/dev/sr0`. The Apple SuperDrive initialization rule is specific to USB vendor/product `05ac:1500`.
+4. The web UI is an unauthenticated HTTP interface bound to all network interfaces on port 80. Use it only on a trusted local network.
+5. The original MPD configuration includes `include_optional "mpd_local.conf"`; this installer does not create or overwrite that optional file.
