@@ -1,6 +1,8 @@
-# CD Memory Player — installation package (draft 1)
+# sŵn Memory Player Installation (UNTESTED)
 
 Target: Raspberry Pi OS / Debian 13 on Raspberry Pi, ARM64 or ARMHF.
+
+**NB - keep in mind that this script is not fully tested, and no guarantees are or will be given as to its success.**
 
 ## What this installs
 
