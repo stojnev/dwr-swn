@@ -1,4 +1,4 @@
-# dŵr-sŵn
+# sŵn
 
 "sŵn" is a no nonsense memory based transport for compact discs. It is designed to allow for effortless playback with a focal point on sound quality and the music experience.
 
