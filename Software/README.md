@@ -52,7 +52,7 @@ The uninstaller removes player-specific scripts, units, udev rules, artwork and 
 ## Important draft notes
 
 1. This is a first reproducibility draft based on the supplied live-system snapshot. Test it on a spare/fresh SD card before using it as the only recovery path.
-2. The installer preserves the supplied MPD configuration except for changing the ALSA output from the fixed Devialet device to ALSA `default`.
+2. The installer preserves the supplied MPD configuration while setting ALSA `default`.
 3. `cdplay` is started by the supplied udev rule as a transient systemd unit named `cdplay`; there is intentionally no permanent `cdplay.service`.
 4. The project expects the optical drive at `/dev/sr0`. The Apple SuperDrive initialization rule is specific to USB vendor/product `05ac:1500`.
 5. The web UI is an unauthenticated HTTP interface bound to all network interfaces on port 80. Use it only on a trusted local network.
