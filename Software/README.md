@@ -6,14 +6,14 @@ Target: Raspberry Pi OS / Debian 13 on Raspberry Pi, ARM64 or ARMHF.
 
 ## What this installs
 
-- The supplied CD extraction/playback scripts (`cdplay`, `cdtag`, `cdeject`)
-- The GPIO eject-button daemon (`cdbutton`, GPIO17)
-- The web interface (`cdui`) on TCP port 80
-- MPD and its configuration from the supplied system
-- Audio-CD udev detection and Apple SuperDrive initialization rules
-- The 900 MB `/run/cdmem` tmpfs mount
-- A narrowly scoped passwordless sudo rule for `cdeject`
-- Diagnostic utilities `cdverify` and `cdcompare`
+- The supplied CD extraction/playback scripts (`cdplay`, `cdtag`, `cdeject`);
+- The GPIO eject-button daemon (`cdbutton`, GPIO17);
+- The web interface (`cdui`) on TCP port 80;
+- MPD and its configuration from the supplied system;
+- Audio-CD udev detection and Apple SuperDrive initialization rules;
+- The 900 MB `/run/cdmem` tmpfs mount;
+- A narrowly scoped passwordless sudo rule for `cdeject`;
+- Diagnostic utilities `cdverify` and `cdcompare`.
 
 The supplied alternate `cdplay.v2` is retained under `optional/` for reference and is not installed or activated.
 
@@ -32,12 +32,12 @@ sudo ./install.sh
 ```
 
 The installer:
-- Checks Debian/Raspberry Pi OS and ARM architecture
-- Installs the required Debian packages
-- Adds the invoking login user to `cdrom`, `audio`, and `gpio` groups when those groups exist
-- Backs up files it replaces under `/var/backups/cd-memory-player/<timestamp>/`
-- Enables MPD, cdbutton and cdui
-- Reloads systemd and udev
+- Checks Debian/Raspberry Pi OS and ARM architecture;
+- Installs the required Debian packages;
+- Adds the invoking login user to `cdrom`, `audio`, and `gpio` groups when those groups exist;
+- Backs up files it replaces under `/var/backups/cd-memory-player/<timestamp>/`;
+- Enables MPD, cdbutton and cdui;
+- Reloads systemd and udev.
 
 A reboot is recommended after installation so new group memberships and udev rules are fully applied.
 
