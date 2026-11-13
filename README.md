@@ -39,3 +39,5 @@ The only avaiable output by default is USB.
 sŵn is based on a RaspOS Lite, with a set of several scripts built in Python to handle playback and playback controls.
 
 Playback control is possible through a browser based interface available on the default HTTP port. It shows basic information about the disc and track, including cover art and general loading status.
+
+Source code and installation scripts are in the ```Software``` folder, along a separate installation specific readme.

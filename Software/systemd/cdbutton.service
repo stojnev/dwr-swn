@@ -1,0 +1,13 @@
+[Unit]
+Description=Physical eject button
+After=multi-user.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/python3 /usr/local/bin/cdbutton
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

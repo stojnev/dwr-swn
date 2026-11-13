@@ -1,0 +1,37 @@
+#!/bin/bash
+# usage: sudo cdcompare 1
+n=${1:-1}
+systemctl is-active --quiet cdplay && { echo "cdplay is still loading, wait"; exit 1; }
+W=/run/cdplay-work; mkdir -p $W
+echo "reading track $n: fast, fast, verified (the verified read takes longer)..."
+cdparanoia -q -Z -d /dev/sr0 -w $n $W/a.wav
+cdparanoia -q -Z -d /dev/sr0 -w $n $W/b.wav
+cdparanoia -q -d /dev/sr0 -w $n $W/v.wav
+python3 - "$n" <<'PY'
+import sys
+n = int(sys.argv[1])
+def audio(p):
+    d = open(p, "rb").read(); i = 12
+    while i < len(d):
+        cid, sz = d[i:i+4], int.from_bytes(d[i+4:i+8], "little")
+        if cid == b"data":
+            return d[i+8:i+8+sz]
+        i += 8 + sz + (sz & 1)
+W = "/run/cdplay-work/"
+files = {"ram": "/run/cdmem/track%02d.wav" % n, "a": W+"a.wav", "b": W+"b.wav", "v": W+"v.wav"}
+data = {k: audio(v) for k, v in files.items()}
+f = lambda s: "%d:%05.2f" % (s // 4500, (s % 4500) / 75)
+def cmp(x, y):
+    a, b = data[x], data[y]
+    if a == b:
+        return "identical"
+    note = "" if len(a) == len(b) else " (lengths %d vs %d)" % (len(a), len(b))
+    m = min(len(a), len(b))
+    bad = [i // 2352 for i in range(0, m, 2352) if a[i:i+2352] != b[i:i+2352]]
+    if not bad:
+        return "differ only in length" + note
+    return "%d sectors differ, first at %s, last at %s%s" % (len(bad), f(bad[0]), f(bad[-1]), note)
+for x, y in [("a", "b"), ("a", "v"), ("b", "v"), ("ram", "a"), ("ram", "v")]:
+    print("%s vs %s: %s" % (x, y, cmp(x, y)))
+PY
+rm -f $W/a.wav $W/b.wav $W/v.wav

@@ -1,0 +1,7 @@
+#!/bin/sh
+[ "$(id -u)" -eq 0 ] || exec sudo "$0" "$@"
+systemctl stop cdplay 2>/dev/null
+mpc stop
+mpc clear
+rm -f /run/cdmem/*
+eject /dev/sr0

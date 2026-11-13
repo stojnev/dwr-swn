@@ -1,0 +1,11 @@
+[Unit]
+Description=Minimal CD player interface
+After=mpd.service network.target
+
+[Service]
+User=swn
+ExecStart=/usr/bin/python3 /usr/local/bin/cdui
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

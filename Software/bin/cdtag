@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+import sys, re, json, struct, urllib.request
+
+UA = {"User-Agent": "cd-memory-player/0.1 (personal use)"}
+
+def parse_toc(text):
+    tracks = []
+    for line in text.splitlines():
+        m = re.match(r"\s*(\d+)\.\s+(\d+)\s+\[[^\]]*\]\s+(\d+)\s+\[", line)
+        if m:
+            tracks.append((int(m[1]), int(m[2]), int(m[3])))
+    return tracks
+
+def credit(ac):
+    return "".join(a.get("name", "") + a.get("joinphrase", "") for a in (ac or []))
+
+def lookup():
+    tracks = parse_toc(sys.stdin.read())
+    if not tracks:
+        print("{}"); return
+    secs = [t[1] / 75 for t in tracks]
+    leadout = tracks[-1][2] + tracks[-1][1] + 150
+    toc = "+".join(str(x) for x in [tracks[0][0], tracks[-1][0], leadout] + [t[2] + 150 for t in tracks])
+    url = f"https://musicbrainz.org/ws/2/discid/-?toc={toc}&fmt=json&inc=recordings+artist-credits+release-groups&cdstubs=no"
+    try:
+        data = json.load(urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=6))
+    except Exception:
+        print("{}"); return
+    cands = []
+    for r in data.get("releases", []):
+        album_key = (r["title"].strip().lower(), credit(r.get("artist-credit")).strip().lower())
+        date = r.get("date") or ""
+        for med in r.get("media", []):
+            tr = med.get("tracks", [])
+            if len(tr) != len(tracks):
+                continue
+            diffs = [abs((t.get("length") or 10**9) / 1000 - s) for t, s in zip(tr, secs)]
+            cands.append((max(diffs), album_key, date, r, tr))
+    if not cands:
+        print("{}"); return
+    cands.sort(key=lambda c: (round(c[0], 1), -len(c[2]), c[2]))
+    best = cands[0]
+    others = [c[0] for c in cands[1:] if c[1] != best[1]]   # a different ALBUM, not another edition
+    if best[0] >= 10 or (others and others[0] < 3 * max(best[0], 1)):
+        print("{}"); return
+    r, tr = best[3], best[4]
+    rel_artist = credit(r.get("artist-credit"))
+    out = {"mbid": r.get("id", ""), "rgid": (r.get("release-group") or {}).get("id", ""), "album": r["title"], "date": (r.get("date") or "")[:4],
+           "tracks": [{"title": t["title"], "artist": credit(t.get("artist-credit")) or rel_artist} for t in tr]}
+    print(json.dumps(out))
+
+def sub(tag, text):
+    b = text.encode("utf-8") + b"\0"
+    return tag + struct.pack("<I", len(b)) + b + (b"\0" if len(b) % 2 else b"")
+
+def header():
+    meta_file, n, sectors, out = sys.argv[2:6]
+    n, sectors = int(n), int(sectors)
+    try:
+        meta = json.load(open(meta_file, encoding="utf-8"))
+    except Exception:
+        meta = {}
+    if meta.get("tracks") and n <= len(meta["tracks"]):
+        t = meta["tracks"][n - 1]
+        tags = {b"INAM": t["title"], b"IART": t["artist"], b"IPRD": meta["album"]}
+        if meta.get("date"):
+            tags[b"ICRD"] = meta["date"]
+    else:
+        tags = {b"INAM": "Track %02d" % n, b"IPRD": "Audio CD"}
+    tags[b"ITRK"] = str(n)
+    info = b"INFO" + b"".join(sub(k, v) for k, v in tags.items() if v)
+    lst = b"LIST" + struct.pack("<I", len(info)) + info
+    nbytes = sectors * 2352
+    fmt = b"fmt " + struct.pack("<IHHIIHH", 16, 1, 2, 44100, 176400, 4, 16)
+    body = b"WAVE" + fmt + lst + b"data" + struct.pack("<I", nbytes)
+    hdr = b"RIFF" + struct.pack("<I", len(body) + nbytes) + body
+    with open(out, "wb") as f:
+        f.write(hdr)
+        f.truncate(len(hdr) + nbytes)
+    print(len(hdr))
+
+def cover():
+    meta_file, out = sys.argv[2:4]
+    try:
+        meta = json.load(open(meta_file, encoding="utf-8"))
+    except Exception:
+        meta = {}
+    for kind, key in (("release", "mbid"), ("release-group", "rgid")):
+        if not meta.get(key):
+            continue
+        try:
+            url = "https://coverartarchive.org/%s/%s/front-500" % (kind, meta[key])
+            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=10) as r:
+                data = r.read()
+            if data[:2] == b"\xff\xd8" or data[:4] == b"\x89PNG":
+                open(out, "wb").write(data)
+                print("ok"); return
+        except Exception:
+            pass
+    print("none")
+
+{"lookup": lookup, "header": header, "cover": cover}[sys.argv[1]]()

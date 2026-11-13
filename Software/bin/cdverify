@@ -1,0 +1,20 @@
+#!/bin/bash
+# usage: sudo cdverify 1 5 11
+systemctl is-active --quiet cdplay && { echo "cdplay is still loading, wait"; exit 1; }
+W=/run/cdplay-work; mkdir -p $W
+for n in "$@"; do
+  f=$(printf "/run/cdmem/track%02d.wav" $n)
+  cdparanoia -q -Z -d /dev/sr0 -w $n $W/ref$n.wav
+  python3 - "$f" "$W/ref$n.wav" "$n" <<'PY'
+import sys
+def audio(p):
+    d = open(p, "rb").read(); i = 12
+    while i < len(d):
+        cid, sz = d[i:i+4], int.from_bytes(d[i+4:i+8], "little")
+        if cid == b"data":
+            return d[i+8:i+8+sz]
+        i += 8 + sz + (sz & 1)
+print("track", sys.argv[3], "IDENTICAL" if audio(sys.argv[1]) == audio(sys.argv[2]) else "DIFFERENT")
+PY
+  rm -f $W/ref$n.wav
+done

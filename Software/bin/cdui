@@ -1,0 +1,375 @@
+#!/usr/bin/env python3
+import json, os, socket, subprocess, time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlparse, parse_qs
+
+MPD = ("127.0.0.1", 6600)
+PORT = 80
+NTRACKS = "/run/cdplay-work/ntracks"
+
+INDEX = r"""<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#000000">
+<title>s&#373;n Memory Transport</title>
+<style>
+:root{--bg:#000;--fg:#e8e4dc;--dim:#8f8b84;--line:#2a2a2a}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{display:flex;justify-content:center;align-items:center;padding:24px;-webkit-tap-highlight-color:transparent}
+.wrap{width:100%;max-width:640px}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.txt{flex:1;min-width:0}
+.cover{flex:none;display:block;width:clamp(84px,24vw,120px);aspect-ratio:1;object-fit:cover;border-radius:4px;background:#111}
+.cover[hidden]{display:none}
+#title{font-size:clamp(1.6rem,6vw,2.6rem);font-weight:600;line-height:1.2;margin:0 0 .4rem;overflow-wrap:anywhere}
+#artist{font-size:clamp(1.1rem,4vw,1.5rem);margin:0}
+#album{font-size:1rem;color:var(--dim);margin:.3rem 0 0}
+#meta{font-size:1rem;color:var(--dim);margin:1.6rem 0 .5rem;min-height:1.3em}
+#bar{height:30px;display:flex;align-items:center;cursor:pointer;touch-action:none}
+#rail{position:relative;width:100%;height:4px;background:var(--line);border-radius:2px}
+#fill{position:absolute;left:0;top:0;height:100%;width:0;background:var(--fg);border-radius:2px}
+#times{display:flex;justify-content:space-between;font-variant-numeric:tabular-nums;color:var(--dim);font-size:1.9rem}
+#controls{display:flex;justify-content:space-between;max-width:420px;flex-wrap:wrap;row-gap:8px;margin:2rem auto 0}
+button{background:none;border:0;color:var(--fg);padding:6px;border-radius:50%;cursor:pointer;font:inherit}
+button:active{background:#1c1c1c}
+button svg{width:48px;height:48px;fill:currentColor;display:block}
+#play svg{width:66px;height:66px}
+button.armed{color:#ff453a}
+#idle{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:24px;text-align:center}
+body.idle #idle{display:flex}
+body.idle .wrap{display:none}
+#idle img{max-width:min(80vw,520px);max-height:80vh;object-fit:contain}
+#idle .t{display:none;color:var(--dim);font-size:1.5rem;letter-spacing:.08em}
+#idle.noimg img{display:none}
+#idle.noimg .t{display:block}
+@media(max-width:400px){body{padding:16px}}
+:root{--bgscale:.85;--bgoffset:0px;--bgsize:min(90vh,110vw);--bgopacity:0.081}
+#bgimg{position:absolute;left:var(--bgoffset);top:50%;height:calc(min(var(--bgsize),100%) * var(--bgscale));width:auto;max-width:100%;object-fit:contain;object-position:left center;transform:translateY(-50%);opacity:var(--bgopacity);pointer-events:none;z-index:-1}
+body.idle #bgimg{display:none}
+.wrap{position:relative;z-index:1}
+html,body{overflow-x:hidden}
+.loading{color:#ff453a}
+</style></head>
+<body class="idle">
+<div id="idle"><img id="idleimg" src="/api/idle" alt="" onerror="document.getElementById('idle').classList.add('noimg')"><span class="t">s&#373;n Memory Transport</span></div>
+<div class="wrap">
+  <img id="bgimg" src="/api/idle" alt="" onerror="this.style.display='none'">
+  <div class="head">
+    <div class="txt">
+      <h1 id="title">&nbsp;</h1>
+      <p id="artist"></p>
+      <p id="album"></p>
+    </div>
+    <img id="cover" class="cover" alt="" hidden>
+  </div>
+  <div id="meta"></div>
+  <div id="bar"><div id="rail"><div id="fill"></div></div></div>
+  <div id="times"><span id="el">0:00</span><span id="du">0:00</span></div>
+  <div id="controls">
+    <button id="prev" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg></button>
+    <button id="play" aria-label="Play or pause"><svg viewBox="0 0 24 24"><path id="playpath" d="M8 5v14l11-7z"/></svg></button>
+    <button id="next" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+    <button id="stop" aria-label="Stop"><svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg></button>
+    <button id="ejectbtn" aria-label="Eject"><svg viewBox="0 0 24 24"><path d="M5 17h14v2H5zm7-12L5.33 15h13.34z"/></svg></button>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const PLAY = "M8 5v14l11-7z", PAUSE = "M6 19h4V5H6v14zm8-14v14h4V5h-4z";
+let fails = 0, S = null, t0 = 0, dragging = false, dragFrac = 0, armed = false, armTimer = null;
+
+const fmt = s => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+
+async function act(name) {
+  try { await fetch("/api/" + name, { method: "POST" }); } catch (e) {}
+  poll();
+}
+async function poll() {
+  try {
+    const r = await fetch("/api/status", { cache: "no-store" });
+    if (!r.ok) throw new Error("status " + r.status);
+    S = await r.json(); t0 = performance.now(); fails = 0;
+  } catch (e) { if (++fails >= 3) S = { offline: true }; }
+  render();
+}
+function elapsedNow() {
+  if (!S || S.elapsed == null) return 0;
+  let e = S.elapsed + (S.state === "play" ? (performance.now() - t0) / 1000 : 0);
+  if (S.duration) e = Math.min(e, S.duration);
+  return e;
+}
+function render() {
+  const idle = !S || S.offline || (S.state === "stop" && S.loaded === 0 && !S.loading);
+  document.body.classList.toggle("idle", idle);
+  let title = "", artist = "", album = "", meta = "", el = 0, du = 0, playing = false;
+  if (!S) { title = "\u00a0"; }
+  else if (S.offline) { title = "Offline"; }
+  else if (S.state === "stop" && S.loaded === 0) { title = S.loading ? "Reading disc\u2026" : "No disc"; }
+  else if (S.state === "stop") { title = "Stopped"; meta = "Press play"; }
+  else {
+    title = S.title; artist = S.artist; album = S.album;
+    meta = (S.state === "pause" ? "Paused " : "Playing ") + S.track + " of " + S.total;
+    el = elapsedNow(); du = S.duration || 0; playing = S.state === "play";
+  }
+  let loadTxt = "";
+  if (S && !S.offline && S.pending) loadTxt = "Loading track " + S.pending + "\u2026";
+  else if (S && !S.offline && S.loading && S.loaded > 0) loadTxt = "Loading " + S.loaded + " of " + S.total;
+  let frac = du ? el / du : 0;
+  if (dragging && du) { frac = dragFrac; el = frac * du; }
+  const cv = $("cover");
+  if (S && !S.offline && S.cover && S.loaded > 0) {
+    const src = "/api/cover?v=" + S.cover;
+    if (cv.getAttribute("src") !== src) cv.setAttribute("src", src);
+    cv.hidden = false;
+  } else { cv.hidden = true; }
+  $("title").textContent = title || "\u00a0";
+  $("artist").textContent = artist;
+  $("album").textContent = album;
+  const mEl = $("meta");
+  mEl.textContent = meta + (meta && loadTxt ? " \u00b7 " : "");
+  if (loadTxt) { const sp = document.createElement("span"); sp.className = "loading"; sp.textContent = loadTxt; mEl.appendChild(sp); }
+  $("fill").style.width = (frac * 100).toFixed(2) + "%";
+  $("el").textContent = fmt(el);
+  $("du").textContent = fmt(du);
+  $("playpath").setAttribute("d", playing ? PAUSE : PLAY);
+}
+
+$("play").onclick = () => act("toggle");
+$("prev").onclick = () => act("prev");
+$("next").onclick = () => act("next");
+$("stop").onclick = () => act("stop");
+
+const bar = $("bar");
+const fracOf = e => { const r = $("rail").getBoundingClientRect(); return Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)); };
+bar.addEventListener("pointerdown", e => {
+  if (!S || !S.duration) return;
+  dragging = true; bar.setPointerCapture(e.pointerId); dragFrac = fracOf(e); render();
+});
+bar.addEventListener("pointermove", e => { if (dragging) { dragFrac = fracOf(e); render(); } });
+bar.addEventListener("pointerup", e => {
+  if (!dragging) return;
+  dragging = false;
+  act("seek?pos=" + (dragFrac * S.duration).toFixed(2));
+});
+bar.addEventListener("pointercancel", () => { dragging = false; });
+
+$("ejectbtn").onclick = () => {
+  const b = $("ejectbtn");
+  if (!armed) {
+    armed = true; b.classList.add("armed");
+    armTimer = setTimeout(() => { armed = false; b.classList.remove("armed"); }, 3000);
+  } else {
+    clearTimeout(armTimer); armed = false; b.classList.remove("armed");
+    act("eject");
+  }
+};
+
+poll(); setInterval(poll, 1000); setInterval(render, 250);
+</script></body></html>"""
+
+
+def mpd(cmd):
+    with socket.create_connection(MPD, timeout=3) as s:
+        r = s.makefile("r", encoding="utf-8", errors="replace", newline="\n")
+        r.readline()                                   # greeting: "OK MPD x.y.z"
+        s.sendall((cmd + "\n").encode("utf-8"))
+        out = {}
+        for line in r:
+            line = line.rstrip("\n")
+            if line == "OK":
+                return out
+            if line.startswith("ACK"):
+                raise RuntimeError(line)
+            k, _, v = line.partition(": ")
+            out[k] = v
+    raise RuntimeError("MPD closed the connection")
+
+
+def num(x):
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return None
+
+
+COVER = "/run/cdplay-work/cover.jpg"
+
+
+def cover_version():
+    try:
+        return int(os.stat(COVER).st_mtime)
+    except OSError:
+        return 0
+
+
+IDLE_DIR = "/usr/local/share/cdui"
+IDLE_TYPES = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp", "gif": "image/gif", "svg": "image/svg+xml"}
+
+
+def idle_image():
+    for ext, mime in IDLE_TYPES.items():
+        path = os.path.join(IDLE_DIR, "idle." + ext)
+        if os.path.isfile(path):
+            return path, mime
+    return None, None
+
+
+def _status_base():
+    st = mpd("status")
+    state = st.get("state", "stop")
+    song = mpd("currentsong") if state in ("play", "pause") else {}
+    loaded = int(st.get("playlistlength", 0))
+    loading = subprocess.run(["systemctl", "is-active", "--quiet", "cdplay"]).returncode == 0
+    try:
+        total = int(open(NTRACKS).read().strip())
+    except Exception:
+        total = None
+    track = song.get("Track") or (str(int(song["Pos"]) + 1) if "Pos" in song else "")
+    return {
+        "state": state,
+        "title": song.get("Title") or song.get("file", ""),
+        "artist": song.get("Artist", ""),
+        "album": song.get("Album", ""),
+        "track": track,
+        "loaded": loaded,
+        "total": max(total or 0, loaded),
+        "loading": loading,
+        "elapsed": num(st.get("elapsed")),
+        "duration": num(st.get("duration")),
+        "cover": cover_version(),
+    }
+
+
+KEEP_PLAYING = False       # True: keep the current track playing while the next one loads
+PENDING = None             # playlist position (0-based) we are waiting for
+PENDING_T = 0.0
+PENDING_MAX = 300          # give up waiting after this many seconds
+
+
+def ntracks():
+    try:
+        return int(open(NTRACKS).read().strip())
+    except Exception:
+        return None
+
+
+def loader_active():
+    return subprocess.run(["systemctl", "is-active", "--quiet", "cdplay"]).returncode == 0
+
+
+def cancel_pending():
+    global PENDING
+    PENDING = None
+
+
+def do_next():
+    global PENDING, PENDING_T
+    st = mpd("status")
+    loaded = int(st.get("playlistlength", 0))
+    pos = int(st["song"]) if "song" in st else -1
+    cur = PENDING if PENDING is not None else pos
+    total = ntracks() or loaded
+    nxt = cur + 1
+    if pos >= 0 and loader_active() and loaded <= nxt < total:
+        PENDING, PENDING_T = nxt, time.time()
+        if not KEEP_PLAYING and st.get("state") == "play":
+            mpd("pause 1")
+    elif PENDING is not None and nxt < loaded:
+        PENDING = None
+        mpd("play %d" % nxt)
+    else:
+        PENDING = None
+        mpd("next")
+
+
+def status():
+    global PENDING
+    d = _status_base()
+    if PENDING is not None:
+        if d["loaded"] > PENDING:
+            mpd("play %d" % PENDING)
+            PENDING = None
+            d = _status_base()
+        elif (not d["loading"]) or time.time() - PENDING_T > PENDING_MAX:
+            PENDING = None
+    d["pending"] = PENDING + 1 if PENDING is not None else 0
+    return d
+
+
+def act(name, q):
+    if name == "toggle":
+        cancel_pending()
+        s = mpd("status").get("state")
+        mpd("pause 1" if s == "play" else "pause 0" if s == "pause" else "play")
+    elif name == "next":
+        do_next()
+    elif name == "prev":
+        cancel_pending()
+        mpd("previous")
+    elif name == "stop":
+        cancel_pending()
+        mpd("stop")
+    elif name == "seek":
+        mpd("seekcur %.2f" % float(q["pos"][0]))
+    elif name == "eject":
+        cancel_pending()
+        subprocess.Popen(["sudo", "-n", "/usr/local/bin/cdeject"], start_new_session=True,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    else:
+        return False
+    return True
+
+
+class H(BaseHTTPRequestHandler):
+    def _send(self, code, body, ctype="application/json"):
+        b = body if isinstance(body, bytes) else body.encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", ctype + "; charset=utf-8")
+        self.send_header("Content-Length", str(len(b)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(b)
+
+    def do_GET(self):
+        p = urlparse(self.path).path
+        if p == "/":
+            self._send(200, INDEX, "text/html")
+        elif p == "/api/status":
+            try:
+                self._send(200, json.dumps(status()))
+            except Exception as e:
+                self._send(503, json.dumps({"error": str(e)}))
+        elif p == "/api/cover":
+            try:
+                data = open(COVER, "rb").read()
+                self._send(200, data, "image/png" if data[:4] == b"\x89PNG" else "image/jpeg")
+            except OSError:
+                self._send(404, "{}")
+        elif p == "/api/idle":
+            path, mime = idle_image()
+            if path:
+                self._send(200, open(path, "rb").read(), mime)
+            else:
+                self._send(404, "{}")
+        else:
+            self._send(404, "{}")
+
+    def do_POST(self):
+        u = urlparse(self.path)
+        if not u.path.startswith("/api/"):
+            return self._send(404, "{}")
+        try:
+            ok = act(u.path[5:], parse_qs(u.query))
+            self._send(200 if ok else 404, "{}")
+        except Exception as e:
+            self._send(500, json.dumps({"error": str(e)}))
+
+    def log_message(self, *a):
+        pass
+
+
+if __name__ == "__main__":
+    ThreadingHTTPServer(("0.0.0.0", PORT), H).serve_forever()
