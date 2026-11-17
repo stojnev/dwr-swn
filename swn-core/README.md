@@ -88,7 +88,7 @@ The button and the remote are always installed. The remote address is not used b
 - **Pi under-voltage:** `vcgencmd get_throttled` should print `0x0`.
 - **Remote silent:** `sudo systemctl restart cdremote`, then `journalctl -u cdremote -f` while pressing a button. If it was never paired, run `sudo cdpair`. cdremote reads the remote through `btmon`, because BlueZ cannot read this remote's HID reports.
 
-### Remote Pairin
+### Remote Pairing
 
 ```
 sudo bluetoothctl
