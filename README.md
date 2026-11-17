@@ -34,6 +34,8 @@ The rear of the enclosure features four cutouts for a Neutrik D-style connector,
 
 The only avaiable output by default is USB.
 
+An Apple Siri remote is optional.
+
 ## Software
 
 sŵn is based on a RaspOS Lite, with a set of several scripts built in Python to handle playback and playback controls.
