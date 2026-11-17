@@ -3,7 +3,7 @@ import subprocess, time
 from signal import pause, signal, SIGCHLD, SIG_IGN
 from gpiozero import Button
 
-PIN = 17          # GPIO17 = physical pin 11 (ground on physical pin 9)
+PIN = @BUTTON_GPIO@          # BCM GPIO number (17 = physical pin 11, ground on physical pin 9)
 LOCKOUT = 5       # seconds to ignore further presses after an eject
 
 signal(SIGCHLD, SIG_IGN)   # no zombie processes

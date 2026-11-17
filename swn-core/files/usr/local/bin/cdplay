@@ -18,7 +18,7 @@ read_into() {
 }
 
 mpc stop >/dev/null; mpc clear >/dev/null
-mountpoint -q $DIR || mount -t tmpfs -o size=900m tmpfs $DIR
+mountpoint -q $DIR || mount -t tmpfs -o size=@RAM_MB@m tmpfs $DIR
 rm -f $DIR/*
 mkdir -p $WORK; rm -f $WORK/*
 log "start"
@@ -27,7 +27,6 @@ TOC=$(cdparanoia -Q -d $DEV 2>&1)
 N=$(echo "$TOC" | grep -cE '^ *[0-9]+\.')
 L1=$(echo "$TOC" | awk '$1=="1." {print $2}')
 log "toc: $N tracks, track 1 = $L1 sectors"
-echo "$N" > "$WORK/ntracks"
 echo "$N" > "$WORK/ntracks"
 
 # title lookup in parallel with the first read, at most 8 s

@@ -1,0 +1,55 @@
+#!/bin/bash
+# Pairs the Siri Remote. Usage: sudo cdpair [BLUETOOTH_ADDRESS]
+# Best effort: if it does not work, pair by hand (see README, "Pairing the remote").
+[ -r /etc/cd-player.conf ] && . /etc/cd-player.conf
+ADDR=${1:-${REMOTE_ADDR:-}}
+[ -n "$ADDR" ] || { echo "no remote address (pass one, or set REMOTE_ADDR in /etc/cd-player.conf)"; exit 1; }
+[ "$(id -u)" -eq 0 ] || exec sudo "$0" "$@"
+command -v bluetoothctl >/dev/null || { echo "bluetoothctl not installed"; exit 1; }
+
+systemctl is-active --quiet bluetooth || systemctl start bluetooth
+rfkill unblock bluetooth 2>/dev/null
+
+if bluetoothctl info "$ADDR" 2>/dev/null | grep -q 'Paired: yes'; then
+    echo "$ADDR is already paired."
+    bluetoothctl info "$ADDR" | grep -E 'Name|Paired|Trusted|Connected'
+    echo "If it does not react, wake it with a button press. To pair again from scratch: bluetoothctl remove $ADDR"
+    exit 0
+fi
+
+cat <<EOF
+Pairing $ADDR
+
+  Put the remote in pairing mode NOW: hold BACK (<) and VOLUME UP together
+  for about 5 seconds, until the remote's light blinks.
+
+Searching for 25 seconds...
+EOF
+
+{
+    echo "power on"
+    echo "agent NoInputNoOutput"
+    echo "default-agent"
+    echo "scan on"
+    sleep 25
+    echo "pair $ADDR"
+    sleep 10
+    echo "trust $ADDR"
+    sleep 2
+    echo "connect $ADDR"
+    sleep 8
+    echo "scan off"
+    echo "quit"
+} | bluetoothctl >/tmp/cdpair.log 2>&1
+
+echo
+bluetoothctl info "$ADDR" 2>/dev/null | grep -E 'Name|Paired|Trusted|Connected' || echo "(the remote was not found - see /tmp/cdpair.log)"
+if bluetoothctl info "$ADDR" 2>/dev/null | grep -q 'Paired: yes'; then
+    systemctl restart cdremote 2>/dev/null
+    echo
+    echo "Paired. Press a button on the remote and watch:  journalctl -u cdremote -f"
+else
+    echo
+    echo "Not paired. Log: /tmp/cdpair.log   (is the address right? 'bluetoothctl devices' while scanning shows it)"
+    exit 1
+fi

@@ -1,0 +1,12 @@
+[Unit]
+Description=Siri Remote control
+After=bluetooth.service cdui.service
+Wants=bluetooth.service
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/local/bin/cdremote
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

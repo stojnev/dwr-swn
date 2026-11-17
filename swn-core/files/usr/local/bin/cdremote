@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+# Reads the Siri Remote's button reports from the Bluetooth monitor and drives the player.
+# Run with --dry-run to only print what would happen.
+import re, subprocess, sys, time, urllib.request
+
+DRY = "--dry-run" in sys.argv
+API = "http://127.0.0.1/api/"
+
+# button value (byte0 | byte1 << 8) -> (name, action); action None = ignored
+BUTTONS = {
+    0x0001: ("TV", None),
+    0x0002: ("VOLUME UP", None),
+    0x0004: ("VOLUME DOWN", None),
+    0x0008: ("CLICK", "toggle"),
+    0x0020: ("SIRI", "eject"),
+    0x0040: ("BACK", "stop"),
+    0x0080: ("MUTE", None),
+    0x0100: ("PLAY/PAUSE", "toggle"),
+    0x0200: ("UP", None),
+    0x0400: ("RIGHT", "next"),
+    0x0800: ("DOWN", None),
+    0x1000: ("LEFT", "prev"),
+}
+
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
+HANDLE = re.compile(r"^\s*Handle: (0x[0-9a-fA-F]{4})\b")
+DATA = re.compile(r"^\s*Data\[(\d+)\]: ([0-9a-fA-F]+)\s*$")
+
+
+LAST_EJECT = 0.0
+
+
+def act(action):
+    global LAST_EJECT
+    if action == "eject":
+        if time.monotonic() - LAST_EJECT < 5:      # ignore repeated presses for 5 s
+            return
+        LAST_EJECT = time.monotonic()
+    if DRY:
+        return
+    try:
+        urllib.request.urlopen(urllib.request.Request(API + action, method="POST"), timeout=3).read()
+    except Exception as e:
+        print("   request failed:", e, flush=True)
+
+
+def main():
+    while True:
+        p = subprocess.Popen(["stdbuf", "-oL", "btmon"], stdout=subprocess.PIPE,
+                             stderr=subprocess.DEVNULL, text=True, bufsize=1)
+        handle, prev = None, 0
+        notif = matched = 0
+        warned = False
+        notif_pdu = False
+        for raw in p.stdout:
+            line = ANSI.sub("", raw)
+            if "ATT:" in line:
+                notif_pdu = "Handle Value Notification" in line
+                handle = None
+                if notif_pdu:
+                    notif += 1
+                    if notif >= 200 and not matched and not warned:
+                        print("WARNING: notifications arrive but cannot be parsed (btmon format changed?)", flush=True)
+                        warned = True
+            m = HANDLE.match(line)
+            if m:
+                matched += 1
+                handle = m.group(1).lower()
+                continue
+            m = DATA.match(line)
+            if m:
+                if handle == "0x0039" and notif_pdu and m.group(1) == "2":
+                    b = bytes.fromhex(m.group(2))
+                    value = b[0] | (b[1] << 8)
+                    for bit, (name, action) in BUTTONS.items():
+                        if value & bit and not prev & bit:
+                            print("%s  %-11s -> %s" % (time.strftime("%H:%M:%S"), name, action or "(ignored)"), flush=True)
+                            if action:
+                                act(action)
+                    prev = value
+                handle = None
+        time.sleep(2)
+
+
+main()
