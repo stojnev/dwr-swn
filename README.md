@@ -43,3 +43,11 @@ sŵn is based on a RaspOS Lite, with a set of several scripts built in Python to
 A browser based interface available on the default HTTP port to show basic information about the disc and track, including cover art and general loading status.
 
 Source code and installation scripts are in the ```swn-core``` folder, along a separate installation specific readme.
+
+## Control
+
+sŵn features a browser based interface that allows for basic playback controls.
+
+
+
+An additional control layer is possible via the use of an Apple Siri remote, with standard mapping and the Siri button performing the eject routine.
