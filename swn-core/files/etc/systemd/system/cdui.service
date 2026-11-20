@@ -4,6 +4,7 @@ After=mpd.service network.target
 
 [Service]
 User=@CD_USER@
+StateDirectory=cdui
 ExecStart=/usr/bin/python3 /usr/local/bin/cdui
 Restart=on-failure
 
