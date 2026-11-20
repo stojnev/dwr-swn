@@ -48,6 +48,8 @@ Source code and installation scripts are in the ```swn-core``` folder, along a s
 
 sŵn features a browser based interface that allows for basic playback controls.
 
-![playback](https://raw.githubusercontent.com/stojnev/dwr-swn/refs/heads/main/photographs/ui-playback-loading.png)
+![playback](https://raw.githubusercontent.com/stojnev/dwr-swn/refs/heads/main/photographs/swn-ui-playback-loading.png)
+
+![playback](https://raw.githubusercontent.com/stojnev/dwr-swn/refs/heads/main/photographs/swn-ui-playback-loading-low-battery.png)
 
 An additional control layer is possible via the use of an Apple Siri remote, with standard mapping and the Siri button performing the eject routine.
