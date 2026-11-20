@@ -68,9 +68,9 @@ sŵn is a small chain of standard tools, each doing one job.
 
 **Drive.** The SuperDrive will not take a disc until it receives a wake-up command, so a udev rule sends it one whenever the drive appears on USB. A second rule starts the loader whenever a disc is detected.
 
-**Loading.** The loader reads the table of contents, then reads each track from the disc with cdparanoia and writes it as a WAV file into a RAM disk (tmpfs). Track 1 is created at its full size up front. Its first part is read and written first, playback starts, and the remainder is filled in afterwards into the same file. The other tracks follow in order.
+**Loading.** The loader reads the table of contents, then reads each track from the disc and writes it as a WAV file into a RAM disk. The first track is created at its full size up front. Its first part is read and written first, playback starts, and the remainder is filled in afterwards into the same file. The other tracks follow in order.
 
-**Playback.** MPD plays the files straight from the RAM disk, gapless, through a direct ALSA connection to the DAC. There is no mixer, no resampling and no software volume in the path, so the audio leaves as 16-bit/44.1 kHz exactly as it was read.
+**Playback.** MPD plays the files straight from the RAM disk, gapless, through a direct ALSA connection to the DAC. There is no mixer, no resampling and no software volume in the path, so the audio leaves exactly as it was read.
 
 **Metadata.** The disc's track layout is looked up on MusicBrainz, and the cover is fetched from the Cover Art Archive. A result is accepted only if the track count matches, the track lengths agree within a few seconds, and the candidates come from a single album, otherwise the disc is left with generic names. The lookup runs alongside the first read with a time limit, so it can never delay playback. Titles are stored as tags inside the WAV files, so nothing outside the RAM disk remembers what was played.
 
