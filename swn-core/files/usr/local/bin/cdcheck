@@ -1,14 +1,14 @@
 #!/bin/bash
 # Checks every part of the player. Usage: cdcheck   (run with sudo for the full set)
 [ -r /etc/cd-player.conf ] && . /etc/cd-player.conf
-: "${CD_USER:=swn}" "${DEVIALET_CARD:=D20}" "${RAM_MB:=900}" "${BUTTON_GPIO:=17}"
+: "${CD_USER:=swn}" "${AUDIO_CARD:=D20}" "${RAM_MB:=900}" "${BUTTON_GPIO:=17}"
 FAIL=0; WARN=0
 ok()   { printf '  PASS  %s\n' "$*"; }
 bad()  { printf '  FAIL  %s\n' "$*"; FAIL=$((FAIL+1)); }
 warn() { printf '  WARN  %s\n' "$*"; WARN=$((WARN+1)); }
 chk()  { local msg=$1; shift; if "$@" >/dev/null 2>&1; then ok "$msg"; else bad "$msg"; fi; }
 
-echo "Settings: user=$CD_USER remote=${REMOTE_ADDR:-?} card=$DEVIALET_CARD gpio=$BUTTON_GPIO ram=${RAM_MB}MB"
+echo "Settings: user=$CD_USER remote=${REMOTE_ADDR:-?} card=$AUDIO_CARD gpio=$BUTTON_GPIO ram=${RAM_MB}MB"
 
 echo; echo "Programs"
 for c in mpd mpc cdparanoia eject sg_raw bluetoothctl btmon aplay lsusb curl python3; do
@@ -34,7 +34,7 @@ chk "user $CD_USER exists" id "$CD_USER"
 echo; echo "Drive"
 if lsusb 2>/dev/null | grep -qi '05ac:1500'; then ok "SuperDrive on USB (05ac:1500)"; else bad "SuperDrive not seen on USB"; fi
 if [ -e /dev/sr0 ]; then ok "/dev/sr0 exists"; else warn "/dev/sr0 missing (drive asleep? unplug and replug it)"; fi
-if lsusb 2>/dev/null | grep -qi '28d4:0008'; then ok "Devialet on USB (28d4:0008)"; else warn "Devialet USB ID 28d4:0008 not seen"; fi
+if lsusb 2>/dev/null | grep -qi '28d4:0008'; then ok "Audio Device on USB (28d4:0008)"; else warn "Audio Device USB ID 28d4:0008 not seen"; fi
 
 echo; echo "RAM disk"
 if mountpoint -q /run/cdmem; then
@@ -51,11 +51,11 @@ echo; echo "MPD and audio"
 chk "mpd.conf music_directory is /run/cdmem" grep -q '^music_directory "/run/cdmem"' /etc/mpd.conf
 chk "mpd.conf audio_buffer_size is 4096 (do not raise it)" grep -q '^audio_buffer_size "4096"' /etc/mpd.conf
 chk "mpd.conf has no state_file" bash -c '! grep -q "^state_file" /etc/mpd.conf'
-chk "mpd.conf output uses card $DEVIALET_CARD" grep -q "hw:CARD=$DEVIALET_CARD,DEV=0" /etc/mpd.conf
-if aplay -l 2>/dev/null | grep -q "card [0-9]*: $DEVIALET_CARD "; then ok "ALSA card $DEVIALET_CARD present"; else bad "ALSA card $DEVIALET_CARD not present (aplay -l)"; fi
+chk "mpd.conf output uses card $AUDIO_CARD" grep -q "hw:CARD=$AUDIO_CARD,DEV=0" /etc/mpd.conf
+if aplay -l 2>/dev/null | grep -q "card [0-9]*: $AUDIO_CARD "; then ok "ALSA card $AUDIO_CARD present"; else bad "ALSA card $AUDIO_CARD not present (aplay -l)"; fi
 chk "mpd answers (mpc status)" mpc status
-rate=$(grep -h 'rate:' /proc/asound/$DEVIALET_CARD/pcm0p/sub0/hw_params 2>/dev/null)
-[ -n "$rate" ] && ok "DAC currently open: $(tr '\n' ' ' < /proc/asound/$DEVIALET_CARD/pcm0p/sub0/hw_params | cut -c1-70)" || echo "  info  DAC idle (hw_params shows while playing)"
+rate=$(grep -h 'rate:' /proc/asound/$AUDIO_CARD/pcm0p/sub0/hw_params 2>/dev/null)
+[ -n "$rate" ] && ok "DAC currently open: $(tr '\n' ' ' < /proc/asound/$AUDIO_CARD/pcm0p/sub0/hw_params | cut -c1-70)" || echo "  info  DAC idle (hw_params shows while playing)"
 
 echo; echo "Services"
 for u in mpd bluetooth cdui cdbutton cdremote; do

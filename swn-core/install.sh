@@ -13,7 +13,7 @@
 #                                      allowed to eject.            [swn]
 #     REMOTE_ADDR    --remote AA:BB:.. Bluetooth address of the Siri Remote.
 #                                                         [60:BE:C4:18:43:90]
-#     DEVIALET_CARD  --card NAME       ALSA card name of the DAC (see
+#     AUDIO_CARD  --card NAME       ALSA card name of the DAC (see
 #                                      "aplay -l", the word after "card N:") [D20]
 #     BUTTON_GPIO    --gpio N          BCM GPIO number of the eject button.
 #                                      17 = physical pin 11.        [17]
@@ -47,7 +47,7 @@ DO_APT=1
 if [ -r "$SAVED_CONF" ]; then
     while IFS='=' read -r k v; do
         case "$k" in
-            CD_USER|REMOTE_ADDR|DEVIALET_CARD|BUTTON_GPIO|RAM_MB)
+            CD_USER|REMOTE_ADDR|AUDIO_CARD|BUTTON_GPIO|RAM_MB)
                 [ -n "${!k:-}" ] || printf -v "$k" '%s' "$v" ;;
         esac
     done < "$SAVED_CONF"
@@ -56,7 +56,7 @@ fi
 # ---- defaults ---------------------------------------------------------------
 : "${CD_USER:=swn}"
 : "${REMOTE_ADDR:=60:BE:C4:18:43:90}"
-: "${DEVIALET_CARD:=D20}"
+: "${AUDIO_CARD:=D20}"
 : "${BUTTON_GPIO:=17}"
 : "${RAM_MB:=900}"
 : "${IDLE_IMAGE:=}"
@@ -69,7 +69,7 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --user)   CD_USER=${2:?}; shift 2 ;;
         --remote) REMOTE_ADDR=${2:?}; shift 2 ;;
-        --card)   DEVIALET_CARD=${2:?}; shift 2 ;;
+        --card)   AUDIO_CARD=${2:?}; shift 2 ;;
         --gpio)   BUTTON_GPIO=${2:?}; shift 2 ;;
         --ram)    RAM_MB=${2:?}; shift 2 ;;
         --idle)   IDLE_IMAGE=${2:?}; shift 2 ;;
@@ -85,7 +85,7 @@ done
 REMOTE_ADDR=$(printf '%s' "$REMOTE_ADDR" | tr 'a-f' 'A-F')
 [[ "$CD_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]            || die "CD_USER '$CD_USER' is not a valid Linux user name"
 [[ "$REMOTE_ADDR" =~ ^([0-9A-F]{2}:){5}[0-9A-F]{2}$ ]] || die "REMOTE_ADDR '$REMOTE_ADDR' is not a Bluetooth address like 60:BE:C4:18:43:90"
-[[ "$DEVIALET_CARD" =~ ^[A-Za-z0-9_.-]+$ ]]        || die "DEVIALET_CARD '$DEVIALET_CARD' has unexpected characters"
+[[ "$AUDIO_CARD" =~ ^[A-Za-z0-9_.-]+$ ]]        || die "AUDIO_CARD '$AUDIO_CARD' has unexpected characters"
 [[ "$BUTTON_GPIO" =~ ^[0-9]{1,2}$ ]] && [ "$BUTTON_GPIO" -le 27 ] || die "BUTTON_GPIO must be a BCM number from 0 to 27"
 [[ "$RAM_MB" =~ ^[0-9]{3,4}$ ]] && [ "$RAM_MB" -ge 300 ]          || die "RAM_MB must be a number of at least 300"
 # no --idle given: use a picture placed in files/usr/local/share/cdui/idle.<ext>
@@ -117,7 +117,7 @@ cat <<EOF
 CD memory player installer
   user ............ $CD_USER
   remote address .. $REMOTE_ADDR
-  DAC card ........ $DEVIALET_CARD
+  DAC card ........ $AUDIO_CARD
   button GPIO ..... $BUTTON_GPIO
   RAM disk ........ ${RAM_MB} MB
   idle image ...... ${IDLE_IMAGE:-(none)}
@@ -131,10 +131,10 @@ put() {
     tmp=$(mktemp)
     sed -e "s|@CD_USER@|$CD_USER|g" \
         -e "s|@REMOTE_ADDR@|$REMOTE_ADDR|g" \
-        -e "s|@DEVIALET_CARD@|$DEVIALET_CARD|g" \
+        -e "s|@AUDIO_CARD@|$AUDIO_CARD|g" \
         -e "s|@BUTTON_GPIO@|$BUTTON_GPIO|g" \
         -e "s|@RAM_MB@|$RAM_MB|g" > "$tmp"
-    if grep -qE '@(CD_USER|REMOTE_ADDR|DEVIALET_CARD|BUTTON_GPIO|RAM_MB)@' "$tmp"; then
+    if grep -qE '@(CD_USER|REMOTE_ADDR|AUDIO_CARD|BUTTON_GPIO|RAM_MB)@' "$tmp"; then
         rm -f "$tmp"; die "unfilled setting in $path (installer bug)"
     fi
     mkdir -p "$(dirname "$dest")"
@@ -298,7 +298,7 @@ Done.
 Next:
   1. Pair the remote (once):        sudo cdpair
   2. Open the page:                  http://$(hostname).local/   (or the Pi's IP address)
-  3. Plug in the SuperDrive and the Devialet, push an audio CD in.
+  3. Plug in the SuperDrive and the Audio device, push an audio CD in.
   4. Check everything any time:     sudo cdcheck
 
 Not tested from scratch on a clean Pi: if anything above fails, send me the
