@@ -56,9 +56,9 @@ An additional control layer is possible via the use of an Apple Siri remote, wit
 
 ## Enclosure
 
-sŵn requires the specific enclosure as a crucial part of its operation. The enclosure is designed to incorporate damping and vibration reduction for both the transport and the entirety of the asssembly.
+sŵn does not requires the specific enclosure as a crucial part of its operation. It would happily work on with a caseless RPi and a directly attached USB drive strung around on the table.
 
-The entire enclosure is 3D printed using PLA, with the exception of several threaded inserts and a selection of precision o-rings.
+The enclosure, however, is designed to incorporate damping and vibration reduction for both the transport and the entirety of the asssembly. This presented version is to be 3D printed using PLA, with the exception of several threaded inserts and a selection of precision o-rings.
 
 Individual STL files, along with a printing and assembly order are in the ```swn-enclosure``` folder.
 
