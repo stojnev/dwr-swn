@@ -56,7 +56,7 @@ An additional control layer is possible via the use of an Apple Siri remote, wit
 
 ## Enclosure
 
-sŵn does not requires the specific enclosure as a crucial part of its operation. It would happily work on with a caseless RPi and a directly attached USB drive strung around on the table.
+sŵn does not require the specific enclosure as a crucial part of its operation. It would happily work on with a caseless RPi and a directly attached USB drive strung around on the table.
 
 The enclosure, however, is designed to incorporate damping and vibration reduction for both the transport and the entirety of the asssembly. This presented version is to be 3D printed using PLA, with the exception of several threaded inserts and a selection of precision o-rings.
 
