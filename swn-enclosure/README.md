@@ -12,7 +12,7 @@ The enclosure is designed to be fully 3D printed, and you only need a spool of P
 - 8 m3 threaded inserts;
 - 8 countersunk machine head m3x10 screws;
 - 15 NBR 8x1.5 o-rings;
-- 15 NBR 11x2 o-tings; and,
+- 15 NBR 11x2 o-rings; and,
 - some patience.
 
 The models are distributed within indivudual folders to facilitate staggered printing.
