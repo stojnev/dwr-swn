@@ -32,12 +32,12 @@
 #                    restart its service; nothing else is touched
 #     -h, --help     show this text
 #
-#  Settings used in an earlier run are remembered in /etc/cd-player.conf, so a
+#  Settings used in an earlier run are remembered in /etc/swn-core.conf, so a
 #  re-run without options keeps them. The script can be run again at any time.
 # =============================================================================
 set -euo pipefail
 
-SAVED_CONF=/etc/cd-player.conf
+SAVED_CONF=/etc/swn-core.conf
 SRC=$(dirname "$(readlink -f "$0")")
 ONLY=""
 STAGE=""
@@ -110,7 +110,7 @@ else
 fi
 
 ROOT=${STAGE:-}
-BACKUP_DIR=/var/backups/cd-player/$(date +%Y%m%d-%H%M%S)
+BACKUP_DIR=/var/backups/swn-core/$(date +%Y%m%d-%H%M%S)
 CHANGED=0
 
 cat <<EOF
@@ -187,7 +187,7 @@ fi
 
 # =============================================================================
 say "2/9  Settings file"
-put 644 /etc/cd-player.conf < "$SRC/files/etc/cd-player.conf"
+put 644 /etc/swn-core.conf < "$SRC/files/etc/swn-core.conf"
 
 # =============================================================================
 say "3/9  Programs in /usr/local/bin"

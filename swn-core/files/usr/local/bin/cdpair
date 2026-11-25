@@ -1,9 +1,9 @@
 #!/bin/bash
 # Pairs the Siri Remote. Usage: sudo cdpair [BLUETOOTH_ADDRESS]
 # Best effort: if it does not work, pair by hand (see README, "Pairing the remote").
-[ -r /etc/cd-player.conf ] && . /etc/cd-player.conf
+[ -r /etc/swn-core.conf ] && . /etc/swn-core.conf
 ADDR=${1:-${REMOTE_ADDR:-}}
-[ -n "$ADDR" ] || { echo "no remote address (pass one, or set REMOTE_ADDR in /etc/cd-player.conf)"; exit 1; }
+[ -n "$ADDR" ] || { echo "no remote address (pass one, or set REMOTE_ADDR in /etc/swn-core.conf)"; exit 1; }
 [ "$(id -u)" -eq 0 ] || exec sudo "$0" "$@"
 command -v bluetoothctl >/dev/null || { echo "bluetoothctl not installed"; exit 1; }
 

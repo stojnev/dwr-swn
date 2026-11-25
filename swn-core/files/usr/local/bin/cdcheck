@@ -1,6 +1,6 @@
 #!/bin/bash
 # Checks every part of the player. Usage: cdcheck   (run with sudo for the full set)
-[ -r /etc/cd-player.conf ] && . /etc/cd-player.conf
+[ -r /etc/swn-core.conf ] && . /etc/swn-core.conf
 : "${CD_USER:=swn}" "${AUDIO_CARD:=D20}" "${RAM_MB:=900}" "${BUTTON_GPIO:=17}"
 FAIL=0; WARN=0
 ok()   { printf '  PASS  %s\n' "$*"; }

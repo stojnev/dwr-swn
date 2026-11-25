@@ -233,7 +233,7 @@ def idle_image():
 # ---- Siri Remote battery (read from BlueZ over D-Bus, kept up to date by a thread) ----
 def _remote_addr():
     try:
-        for ln in open("/etc/cd-player.conf"):
+        for ln in open("/etc/swn-core.conf"):
             if ln.startswith("REMOTE_ADDR="):
                 return ln.split("=", 1)[1].strip()
     except OSError:
