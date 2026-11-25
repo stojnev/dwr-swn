@@ -48,8 +48,8 @@ fi
 chk "fstab line for /run/cdmem" grep -q '^tmpfs /run/cdmem tmpfs' /etc/fstab
 
 echo; echo "MPD and audio"
-chk "mpd.conf music_directory is /run/cdmem" grep -q '^music_directory "/run/cdmem"' /etc/mpd.conf
-chk "mpd.conf audio_buffer_size is 4096 (do not raise it)" grep -q '^audio_buffer_size "4096"' /etc/mpd.conf
+chk "mpd.conf music_directory is /run/cdmem" grep -qE '^music_directory[[:space:]]+"/run/cdmem"' /etc/mpd.conf
+chk "mpd.conf audio_buffer_size is 4096 (do not raise it)" grep -qE '^audio_buffer_size[[:space:]]+"4096"' /etc/mpd.conf
 chk "mpd.conf has no state_file" bash -c '! grep -q "^state_file" /etc/mpd.conf'
 chk "mpd.conf output uses card $AUDIO_CARD" grep -q "hw:CARD=$AUDIO_CARD,DEV=0" /etc/mpd.conf
 if aplay -l 2>/dev/null | grep -q "card [0-9]*: $AUDIO_CARD "; then ok "ALSA card $AUDIO_CARD present"; else bad "ALSA card $AUDIO_CARD not present (aplay -l)"; fi
